@@ -34,14 +34,21 @@ def run_video_download(video_url):
     
     # Cobalt 官方底层接口
     api_url = "https://api.cobalt.tools/api/json"
+    # Cobalt 官方底层接口
+    api_url = "https://api.cobalt.tools/api/json"
+    
+    # 👇 终极伪装请求头，假装我们是从 Cobalt 官方网页发起的请求
     headers = {
         "Accept": "application/json",
         "Content-Type": "application/json",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Origin": "https://cobalt.tools",
+        "Referer": "https://cobalt.tools/"
     }
+    
+    # 👇 极简参数，去掉容易引发 400 报错的多余配置
     payload = {
-        "url": video_url,
-        "vQuality": "720" # 限定720p，既保证视觉大模型能看清，又大幅提升云端拉取速度
+        "url": video_url
     }
     
     try:
