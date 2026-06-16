@@ -25,48 +25,59 @@ def load_whisper_model():
 
 
 def run_video_download(video_url):
-    """【通道A】下载网络视频，保留原视频用于抽帧，并剥离音频"""
-    output_name = "current_task_audio"
+    """【通道A：API代理版】调用 Cobalt 接口绕过防火墙，获取直链后下载"""
+    import requests
+    import subprocess
+    import os
     
-    # 清理历史残留文件，防止干扰
-    for f in os.listdir("."):
-        if f.startswith(output_name):
-            try: os.remove(f)
-            except: pass
-
-    ydl_opts = {
-        'format': 'best',
-        'outtmpl': f'{output_name}.%(ext)s',
-        'postprocessors': [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'mp3',
-            'preferredquality': '128',
-        }],
-        'keepvideo': True, 
-        'quiet': True,
-        'socket_timeout': 60,
-        'retries': 10,
-        'nocheckcertificate': True,
-        'extractor_args': {'youtube': ['player_client=ios,android,web']},
-        'http_headers': {
-            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'en-us,en;q=0.5',
-            'Sec-Fetch-Mode': 'navigate',
-        }
+    st.write("🌐 正在连接 Cobalt 解析集群，尝试绕过平台防火墙...")
+    
+    # Cobalt 官方底层接口
+    api_url = "https://api.cobalt.tools/api/json"
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    }
+    payload = {
+        "url": video_url,
+        "vQuality": "720" # 限定720p，既保证视觉大模型能看清，又大幅提升云端拉取速度
     }
     
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        ydl.download([video_url])
+    try:
+        # 第一步：让第三方服务器去硬刚反爬策略，我们只拿战利品（直链）
+        response = requests.post(api_url, json=payload, headers=headers, timeout=30)
+        response.raise_for_status()
+        data = response.json()
         
-    # 寻找保留下来的视频文件路径
-    video_file = None
-    for f in os.listdir("."):
-        if f.startswith(output_name) and not f.endswith(".mp3"):
-            video_file = f
-            break
+        if data.get("status") not in ["stream", "redirect", "success"]:
+            raise Exception(f"解析失败，可能是不支持的平台或链接已失效: {data.get('text', '未知错误')}")
             
-    return f"{output_name}.mp3", video_file
+        download_url = data.get("url")
+        st.write("✅ 成功突破防御！已拿到底层视频流直链，正在将文件拉取到云端处理中心...")
+        
+        # 第二步：将解析出的干净视频文件真正下载到我们的 Streamlit 临时服务器中
+        video_path = "current_task_video.mp4"
+        audio_path = "current_task_audio.mp3"
+        
+        if os.path.exists(video_path): os.remove(video_path)
+        if os.path.exists(audio_path): os.remove(audio_path)
+        
+        with requests.get(download_url, stream=True, timeout=60) as r:
+            r.raise_for_status()
+            with open(video_path, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+                    
+        # 第三步：使用底层的 FFmpeg 将拉取回来的视频瞬间剥离出纯净音频
+        st.write("📥 视频拉取完毕，正在剥离音轨...")
+        cmd = f'ffmpeg -i "{video_path}" -vn -acodec libmp3lame -ar 16000 -ab 128k -y "{audio_path}"'
+        subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        return audio_path, video_path
+
+    except Exception as e:
+        raise Exception(f"流媒体代理获取失败，可能被限流，请稍后重试: {e}")
 
 
 def extract_audio_from_local(uploaded_file):
