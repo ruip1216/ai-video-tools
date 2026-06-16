@@ -27,16 +27,14 @@ def load_whisper_model():
 def run_video_download(video_url):
     """【通道A】下载网络视频，保留原视频用于抽帧，并剥离音频"""
     output_name = "current_task_audio"
-
+    
     # 清理历史残留文件，防止干扰
     for f in os.listdir("."):
         if f.startswith(output_name):
-            try:
-                os.remove(f)
-            except:
-                pass
+            try: os.remove(f)
+            except: pass
 
-   ydl_opts = {
+    ydl_opts = {
         'format': 'best',
         'outtmpl': f'{output_name}.%(ext)s',
         'postprocessors': [{
@@ -48,22 +46,22 @@ def run_video_download(video_url):
         'quiet': True,
         'socket_timeout': 60,
         'retries': 10,
-        # 👇 以下是新增的防 403 封锁伪装参数 👇
         'extractor_args': {'youtube': ['player_client=android']},
         'http_headers': {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         }
     }
+    
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         ydl.download([video_url])
-
+        
     # 寻找保留下来的视频文件路径
     video_file = None
     for f in os.listdir("."):
         if f.startswith(output_name) and not f.endswith(".mp3"):
             video_file = f
             break
-
+            
     return f"{output_name}.mp3", video_file
 
 
