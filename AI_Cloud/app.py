@@ -187,17 +187,19 @@ st.markdown("""
 # ----------------- 侧边栏控制台 -----------------
 with st.sidebar:
     st.header("⚙️ 引擎控制台")
-    st.markdown("**阿里云 API 配置**")
-    user_api_key = st.text_input("Qwen-VL API Key", type="password", help="输入百炼平台申请的API Key")
+    # st.markdown("**阿里云 API 配置**")
+    # user_api_key = st.text_input("Qwen-VL API Key", type="password", help="输入百炼平台申请的API Key")
 
-    st.divider()
+    # st.divider()
+    # 直接从云端保险柜中读取 API Key
+    user_api_key = st.secrets["QWEN_API_KEY"]
     st.markdown("🛠️ **调试开关**")
     show_raw_json = st.toggle("显示底层 JSON 源码", value=False)
 
-    if user_api_key:
-        st.success("API Key 已加载")
-    else:
-        st.warning("请先填入 API Key")
+    # if user_api_key:
+    #     st.success("API Key 已加载")
+    # else:
+    #     st.warning("请先填入 API Key")
 
 # ----------------- 主界面 -----------------
 st.title("🌍 AI 多模态溯源选品智能体")
@@ -230,8 +232,8 @@ with col2:
 if start_btn:
     if not source_type:
         st.error("⚠️ 请先提供视频源（输入链接或上传文件）！")
-    elif not user_api_key:
-        st.error("⚠️ 请先在左侧边栏填入通义千问的 API Key！")
+    # elif not user_api_key:
+    #     st.error("⚠️ 请先在左侧边栏填入通义千问的 API Key！")
     else:
         st.toast("多模态流水线已启动...", icon="⏳")
         target_video_path = None
